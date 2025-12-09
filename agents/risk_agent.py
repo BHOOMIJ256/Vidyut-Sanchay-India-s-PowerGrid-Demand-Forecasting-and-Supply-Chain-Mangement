@@ -194,6 +194,8 @@ try:
     - No loops, no recursion, no re-thinking steps.
     - Process companies sequentially. Finish one → move to next.
     - If any tool fails, return "Unable to fetch" for that company instead of looping.
+    - In the serp_tool try to put relevent search query
+    - I want the the article or url should be related to company , as supplier how good that company is in that part (supplying and then overall too.)
 
     After processing all companies, return the final JSON list like this,make sure it is json or dictionary:
 
