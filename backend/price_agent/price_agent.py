@@ -118,7 +118,7 @@ class PriceAgent:
         return current_prices
 
     # =========================================================================
-    #  PASTE THIS INSIDE price_agent.py (Replace existing calculate_project_cost)
+    #  REPLACE THESE TWO METHODS IN price_agent.py
     # =========================================================================
 
     def compare_suppliers(self, material_type: str, quantity: float, market_base_price: float) -> Dict:
@@ -126,26 +126,31 @@ class PriceAgent:
         Compare suppliers based on Live Market Price + Supplier Premium.
         Returns the best supplier option (Dictionary).
         """
-        # Define Supplier Database locally (or import from config)
-        # In a real app, this comes from a database
+        # Expanded Supplier Database with Real Indian Market Players
         SUPPLIER_DB = {
             'steel': {
-                'TATA_STEEL': {'premium': 0.04, 'transport': 1200, 'rating': 4.9},
-                'JSW_STEEL':  {'premium': 0.02, 'transport': 800,  'rating': 4.7},
-                'SAIL':       {'premium': 0.00, 'transport': 1500, 'rating': 4.5}
+                'TATA_STEEL': {'premium': 0.05, 'transport': 1200, 'rating': 4.9, 'location': 'Jamshedpur'},
+                'SAIL':       {'premium': 0.00, 'transport': 1500, 'rating': 4.5, 'location': 'Bhilai'},
+                'JSW_STEEL':  {'premium': 0.02, 'transport': 800,  'rating': 4.7, 'location': 'Mumbai'},
+                'KEC_INTL':   {'premium': 0.03, 'transport': 1100, 'rating': 4.6, 'location': 'Nagpur'},
+                'SKIPPER':    {'premium': -0.01, 'transport': 1600, 'rating': 4.4, 'location': 'Kolkata'}
             },
             'conductor': {
-                'STERLITE':   {'premium': 0.05, 'transport': 2000, 'rating': 4.8},
-                'APAR_IND':   {'premium': 0.03, 'transport': 1800, 'rating': 4.6},
-                'GUPTA_PWR':  {'premium': -0.02, 'transport': 1500, 'rating': 4.2}
+                'STERLITE':   {'premium': 0.06, 'transport': 2000, 'rating': 4.8, 'location': 'Silvassa'},
+                'APAR_IND':   {'premium': 0.03, 'transport': 1800, 'rating': 4.7, 'location': 'Vadodara'},
+                'GUPTA_PWR':  {'premium': -0.02, 'transport': 1500, 'rating': 4.2, 'location': 'Bhubaneswar'},
+                'POLYCAB':    {'premium': 0.04, 'transport': 1200, 'rating': 4.6, 'location': 'Nashik'}
+            },
+            'concrete': {
+                'ULTRATECH':  {'premium': 0.05, 'transport': 500,  'rating': 4.9, 'location': 'Pan-India'},
+                'ACC_LTD':    {'premium': 0.02, 'transport': 450,  'rating': 4.6, 'location': 'Pan-India'},
+                'LOCAL_MIX':  {'premium': -0.10, 'transport': 200,  'rating': 3.8, 'location': 'Local'}
             }
         }
 
         if material_type not in SUPPLIER_DB or quantity == 0:
-            # If no supplier data, return standard market cost
             return {'supplier': 'Market Rate', 'total_quote': quantity * market_base_price}
 
-        # Compare Candidates
         candidates = []
         for name, data in SUPPLIER_DB[material_type].items():
             # Formula: (Base Price * Premium) + Transport
@@ -159,30 +164,30 @@ class PriceAgent:
                 'supplier': name,
                 'total_quote': total_cost,
                 'unit_price': unit_price,
-                'rating': data['rating']
+                'rating': data['rating'],
+                'location': data['location']
             })
         
-        # Select "Best" (Lowest Price for now)
+        # Select "Best" (Lowest Price)
+        # Future upgrade: Add logic here to weigh Rating vs Price
         best_option = min(candidates, key=lambda x: x['total_quote'])
         return best_option
 
     def calculate_project_cost(self, ml_output: Dict) -> Dict:
         """
-        1. Reads ML Quantities (All 7 items).
-        2. Selects Best Supplier for Steel/Conductor.
-        3. Applies Base Prices for Concrete/Equipment.
+        1. Reads ML Quantities.
+        2. Selects Best Supplier for Steel, Conductor, AND Concrete.
+        3. Applies Base Prices for Equipment.
         4. Generates Final Budget.
         """
-        # 1. Get Live Global Prices
         prices = self.get_current_prices()
         
         print("\n" + "="*70)
         print("🏗️  GENERATING COMPREHENSIVE COST REPORT")
         print("="*70)
 
-        # 2. Extract Quantities (Handling your specific ML JSON format)
+        # Helper to safely get values
         def get_val(key):
-            # Returns 0 if key is missing or empty
             return float(ml_output.get(key, {}).get("value", 0.0))
 
         q_steel = get_val("steel_tonnes")
@@ -193,39 +198,34 @@ class PriceAgent:
         q_break = get_val("circuit_breaker_count")
         q_react = get_val("bus_reactor_count")
 
-        # 3. Calculate Costs & Select Suppliers
-
-        # --- A. STEEL (Supplier Selection) ---
+        # --- SUPPLIER SELECTION ---
         steel_deal = self.compare_suppliers('steel', q_steel, prices['steel_price_per_tonne'])
-        cost_steel = steel_deal['total_quote']
-
-        # --- B. CONDUCTOR (Supplier Selection) ---
-        # Note: prices['conductor_price_per_km'] is derived from Live Aluminum API
         cond_deal = self.compare_suppliers('conductor', q_cond_km, prices['conductor_price_per_km'])
-        cost_conductor = cond_deal['total_quote']
+        conc_deal = self.compare_suppliers('concrete', q_concrete, prices['concrete_price_per_m3'])  # NEW!
 
-        # --- C. OTHER MATERIALS (Standard Rates) ---
-        cost_insul = q_insul * prices['insulator_price_per_unit']
-        cost_concrete = q_concrete * prices['concrete_price_per_m3']
+        # --- COST CALCULATION ---
+        cost_steel = steel_deal['total_quote']
+        cost_conductor = cond_deal['total_quote']
+        cost_concrete = conc_deal['total_quote']  # Using supplier quote now
         
-        # --- D. EQUIPMENT (Standard Rates) ---
+        cost_insul = q_insul * prices['insulator_price_per_unit']
         cost_trans = q_trans * prices['transformer_price_unit']
         cost_break = q_break * prices['circuit_breaker_price_unit']
         cost_react = q_react * prices['bus_reactor_price_unit']
 
-        # 4. Total Calculation
+        # --- TOTALS ---
         subtotal = (cost_steel + cost_conductor + cost_insul + cost_concrete + 
                     cost_trans + cost_break + cost_react)
         contingency = subtotal * 0.05
         grand_total = subtotal + contingency
 
-        # 5. Print Detailed Table
+        # --- OUTPUT ---
         print(f"{'ITEM':<20} | {'QTY':<10} | {'SUPPLIER/SOURCE':<15} | {'COST (INR)':>15}")
         print("-" * 70)
         print(f"{'Steel':<20} | {q_steel:<8.1f} T | {steel_deal['supplier']:<15} | {format_currency(cost_steel):>15}")
         print(f"{'Conductor':<20} | {q_cond_km:<8.1f} km| {cond_deal['supplier']:<15} | {format_currency(cost_conductor):>15}")
+        print(f"{'Concrete':<20} | {q_concrete:<8.1f} m3| {conc_deal['supplier']:<15} | {format_currency(cost_concrete):>15}")
         print(f"{'Insulators':<20} | {q_insul:<8.0f} U | {'Base Rate':<15} | {format_currency(cost_insul):>15}")
-        print(f"{'Concrete':<20} | {q_concrete:<8.1f} m3| {'Local Mix':<15} | {format_currency(cost_concrete):>15}")
         print(f"{'Transformers':<20} | {q_trans:<8.0f} U | {'BHEL/CGL':<15} | {format_currency(cost_trans):>15}")
         print(f"{'Circuit Breakers':<20} | {q_break:<8.0f} U | {'Siemens/ABB':<15} | {format_currency(cost_break):>15}")
         print(f"{'Bus Reactors':<20} | {q_react:<8.0f} U | {'BHEL/CGL':<15} | {format_currency(cost_react):>15}")
