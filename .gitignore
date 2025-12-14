@@ -185,3 +185,5 @@ penv/
 *.log
 penv/
 .venv/
+__pycache__/
+.ipynb_checkpoints/
