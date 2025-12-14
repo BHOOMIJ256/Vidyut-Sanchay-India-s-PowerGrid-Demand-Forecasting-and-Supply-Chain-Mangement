@@ -1,0 +1,28 @@
+/* Custom CSS */
+:root {
+    --dark-blue: #0f172a;
+    --primary-blue: #2563eb;
+}
+
+.bg-dark-blue { background-color: var(--dark-blue); }
+.text-dark-blue { color: var(--dark-blue); }
+
+.card { border-radius: 12px; }
+.nav-pills .nav-link { color: #64748b; font-weight: 500; }
+.nav-pills .nav-link.active { background-color: var(--primary-blue); color: white; }
+
+.ticker-item { margin-left: 20px; border-left: 1px solid #e2e8f0; padding-left: 20px; }
+
+/* Chatbot Styles */
+.chat-btn {
+    position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 1000;
+}
+.chat-window {
+    position: fixed; bottom: 100px; right: 30px; width: 350px; height: 450px; 
+    z-index: 1000; border-radius: 15px; display: flex; flex-direction: column;
+}
+.chat-body { flex: 1; overflow-y: auto; background: #f8fafc; padding: 15px; }
+
+.message { padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; max-width: 80%; }
+.bot-msg { background: #e2e8f0; align-self: flex-start; margin-right: auto; }
+.user-msg { background: var(--primary-blue); color: white; align-self: flex-end; margin-left: auto; }

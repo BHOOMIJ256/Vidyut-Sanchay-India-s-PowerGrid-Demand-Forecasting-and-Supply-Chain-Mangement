@@ -1,18 +1,22 @@
 import os
+import json
 from dotenv import load_dotenv
+
+# --- UPDATED IMPORTS FOR LANGCHAIN v1.x ---
+from langchain.agents import create_agent  # The new standard
+from langchain_groq import ChatGroq
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
-from langchain.agents import initialize_agent, AgentType
+# ------------------------------------------
+
 from price_agent.price_agent import PriceAgent
 
-# Load Env for OpenAI Key
+# Load Env for API Keys
 load_dotenv()
 
 # 1. Initialize your existing Logic Agent (THE ENGINE)
-# We use your robust Python code as the backend
 backend_agent = PriceAgent(use_live_apis=True)
 
-# 2. Define "Tools" (This lets GPT use your code)
+# 2. Define Tools
 @tool
 def check_current_market_prices(dummy_input: str = "") -> str:
     """
@@ -34,33 +38,33 @@ def calculate_project_cost_estimate(ml_json_string: str) -> str:
     IMPORTANT: Input must be a JSON string with keys: 
     'steel_tonnes', 'conductor_km', 'transformers_count', etc.
     """
-    import json
     try:
-        # GPT might send a string, we need to convert it to Dict for your code
         data = json.loads(ml_json_string)
         report = backend_agent.calculate_project_cost(data)
         return str(report)
     except Exception as e:
         return f"Error calculating cost: {e}"
 
-# 3. Initialize the Brain (OpenAI)
-# You need OPENAI_API_KEY in your .env file
-llm = ChatOpenAI(temperature=0, model="gpt-4o") # Use 3.5-turbo if 4o is not available
+# 3. Initialize the Brain (Groq LLM)
+llm = ChatGroq(
+    temperature=0, 
+    model_name="llama-3.3-70b-versatile",
+    groq_api_key=os.getenv("GROQ_API_KEY")
+)
 
-# 4. Give the Tools to the Brain
+# 4. Create the Agent (New v1.x Syntax)
+# No more AgentExecutor! The agent handles the loop itself.
 tools = [check_current_market_prices, calculate_project_cost_estimate]
 
-agent_executor = initialize_agent(
-    tools, 
-    llm, 
-    agent=AgentType.OPENAI_FUNCTIONS, 
-    verbose=True,
-    handle_parsing_errors=True
+agent = create_agent(
+    model=llm,
+    tools=tools,
+    system_prompt="You are the Vidyut Sanchay AI Procurement Manager. Use your tools to fetch real-time prices and calculate project costs. Be precise and professional."
 )
 
 # ================= DEMO MODE =================
 if __name__ == "__main__":
-    print("🤖 VIDYUT SANCHAY AI MANAGER: I am ready.")
+    print("🤖 VIDYUT SANCHAY AI MANAGER (Modern v1.x): Ready.")
     
     while True:
         user_input = input("\nAdmin: ")
@@ -68,7 +72,11 @@ if __name__ == "__main__":
             break
             
         try:
-            response = agent_executor.invoke(user_input)
-            print(f"AI: {response['output']}")
+            # New Invocation Syntax: Takes a list of messages
+            response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
+            
+            # The last message in the response is the AI's answer
+            print(f"AI: {response['messages'][-1].content}")
+            
         except Exception as e:
             print(f"Error: {e}")

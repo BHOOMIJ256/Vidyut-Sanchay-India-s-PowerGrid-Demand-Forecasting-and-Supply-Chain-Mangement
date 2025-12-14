@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidyut Sanchay | Intelligent Grid Procurement</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-blue shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-bolt text-warning me-2"></i> VIDYUT SANCHAY
+            </a>
+            <span class="text-light small opacity-75">AI-Powered Supply Chain Orchestrator</span>
+        </div>
+    </nav>
+
+    <div class="bg-white border-bottom py-2">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center small text-muted" id="ticker-container">
+                <span><i class="fas fa-circle text-success me-1"></i> Market Status: <strong>LIVE</strong></span>
+                <span class="ticker-item">USD/INR: <strong id="t-inr">Loading...</strong></span>
+                <span class="ticker-item">Aluminum: <strong id="t-alu">Loading...</strong></span>
+                <span class="ticker-item">Copper: <strong id="t-cop">Loading...</strong></span>
+                <span class="ticker-item">WTI Crude: <strong id="t-oil">Loading...</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4 px-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-project-diagram me-2 text-primary"></i> Project Parameters
+                    </div>
+                    <div class="card-body">
+                        <form id="projectForm">
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Project Type</label>
+                                <select class="form-select form-select-sm" id="project_type">
+                                    <option value="Transmission Line">Transmission Line</option>
+                                    <option value="Substation">Substation</option>
+                                    <option value="HVDC">HVDC</option>
+                                    <option value=" Upgradation">Upgradation</option>
+                                </select>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Region</label>
+                                    <select class="form-select form-select-sm" id="region">
+                                        <option value="South">South</option>
+                                        <option value="North">North</option>
+                                        <option value="East">East</option>
+                                        <option value="West">West</option>
+                                        <option value="North-East">North-East</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">State</label>
+                                    <input type="text" class="form-control form-control-sm" id="state" placeholder="e.g. Kerala">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Soil Type</label>
+                                    <select class="form-select form-select-sm" id="soil_type">
+                                        <option value="Clayey">Clayey</option>
+                                        <option value="Loamy">Loamy</option>
+                                        <option value="Black Cotton">Black Cotton</option>
+                                        <option value="Rocky">Rocky</option>
+                                        <option value="Mixed">Mixed</option>
+                                        <option value="Sandy">Sandy</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Terrain</label>
+                                    <select class="form-select form-select-sm" id="terrain_type">
+                                        <option value="Coastal">Coastal</option>
+                                        <option value="Plains">Plains</option>
+                                        <option value="Hilly">Hilly</option>
+                                        <option value="Forest">Forest</option>
+                                        <option value="Mountainous">Mountainous</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Voltage (kV)</label>
+                                    <input type="number" class="form-control form-control-sm" id="voltage_kv" value="132">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Circuit Type</label>
+                                    <select class="form-select form-select-sm" id="circuit_type">
+                                        <option value="Single Circuit">Single Circuit</option>
+                                        <option value="Double Circuit">Double Circuit</option>
+                                        <option value="Multi Circuit">Multi Circuit</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Conductor Type</label>
+                                <select class="form-select form-select-sm" id="conductor_type">
+                                    <option value="ACSR Panther">ACSR Panther</option>
+                                    <option value="ACSR Zebra">ACSR Zebra</option>
+                                    <option value="AAAC Moose">ACSR Moose</option>
+                                    <option value="HTLS">HTLS</option>
+                                </select>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Length (km)</label>
+                                    <input type="number" class="form-control form-control-sm" id="length_km" value="71.79" step="0.01">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Towers (Qty)</label>
+                                    <input type="number" class="form-control form-control-sm" id="num_towers" value="282">
+                                </div>
+                            </div>
+                            
+                            <button type="button" onclick="generatePlan()" class="btn btn-primary w-100 mt-2">
+                                <i class="fas fa-rocket me-2"></i> Generate Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                </div>
+
+            <div class="col-md-9">
+                <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="tab-cost" data-bs-toggle="pill" data-bs-target="#view-cost">
+                            <i class="fas fa-rupee-sign me-2"></i> Cost & Suppliers
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-eng" data-bs-toggle="pill" data-bs-target="#view-eng">
+                            <i class="fas fa-ruler-combined me-2"></i> Engineering
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-risk" data-bs-toggle="pill" data-bs-target="#view-risk">
+                            <i class="fas fa-shield-alt me-2"></i> Risk Analysis
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-logistics" data-bs-toggle="pill" data-bs-target="#view-logistics">
+                            <i class="fas fa-truck-fast me-2"></i> Logistics
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContent">
+                    
+                    <div class="tab-pane fade show active" id="view-cost">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title fw-bold text-dark-blue">Final Tender Quote</h5>
+                                    <h2 class="text-success fw-bold" id="grand-total">₹ 0.00 Cr</h2>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Material Item</th>
+                                                <th>Quantity</th>
+                                                <th>Selected Supplier</th>
+                                                <th class="text-end">Cost Estimate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cost-table">
+                                            <tr><td colspan="4" class="text-center py-5 text-muted">Waiting for input...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="view-eng">
+                        <div class="row" id="eng-cards">
+                            <div class="col-12 text-center py-5 text-muted">No Data Generated</div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="view-risk">
+                        <div class="row" id="risk-cards">
+                             <div class="col-12 text-center py-5 text-muted">No Data Generated</div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="view-logistics">
+                         <div class="row" id="logistics-cards">
+                             <div class="col-12 text-center py-5 text-muted">No Data Generated</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary rounded-circle shadow-lg chat-btn" onclick="toggleChat()">
+        <i class="fas fa-robot fa-lg"></i>
+    </button>
+
+    <div class="card shadow-lg chat-window d-none" id="chatWindow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-robot me-2"></i> AI Manager</span>
+            <button class="btn btn-sm btn-link text-white" onclick="toggleChat()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="card-body chat-body" id="chat-messages">
+            <div class="message bot-msg">Hello! I am connected to the Price & Risk agents. Ask me anything about the plan.</div>
+        </div>
+        <div class="card-footer bg-white">
+            <div class="input-group">
+                <input type="text" id="chat-input" class="form-control border-0" placeholder="Type a message...">
+                <button class="btn btn-primary" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
