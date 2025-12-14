@@ -136,10 +136,52 @@ def scrape_tool(url: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
     
     
+import requests
 
+# -------------------------------
+# 1. SETUP
+# -------------------------------
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "")
+if not WEATHER_API_KEY:
+    raise RuntimeError("Set WEATHER_API_KEY env var before running")
+ # Replace with your actual key
+BASE_URL = "http://api.weatherapi.com/v1"
+
+
+def get_forecast(city, days=3):
+    """
+    Fetches forecast for the next X days (max: 14 days in free plan)
+    """
+    endpoint = f"{BASE_URL}/forecast.json"
+    
+    params = {
+        "key": WEATHER_API_KEY,
+        "q": city,
+        "days": days,
+        "aqi": "yes",
+        "alerts": "yes"      # shows storm / weather alerts
+    }
+
+    response = requests.get(endpoint, params=params)
+    data = response.json()
+    return data
+
+
+@tool 
+def weather_summary(city_name:str):
+    """This tools helps in gathering the weather summary of the city and also provides the forecast of the next 3 days"""
+    # Get forecast (next 3 days)
+    forecast_data = get_forecast(city_name, days=3)
+    result = []
+    for j in range(0,3):
+        for i in range(0,24,5):
+            result.append(["time:",forecast_data['forecast']['forecastday'][j]['hour'][i]['time'],"condition:",forecast_data['forecast']['forecastday'][0]['hour'][i]['condition']['text'],"temp_c:",forecast_data['forecast']['forecastday'][0]['hour'][0]['temp_c']])
+
+    return result
 
 # Tools list that LLM can choose from
-TOOLS = [serp_tool, scrape_tool]
+
+TOOLS = [serp_tool, scrape_tool, weather_summary] 
 
 # LLM instance (Gemini)
 #llm = ChatGroq(temperature=0.4, model="qwen/qwen3-32b")
@@ -168,45 +210,140 @@ graph.add_conditional_edges("chat_node",tools_condition)
 graph.add_edge('tools', 'chat_node') 
 
 chatbot = graph.compile()
+
+
+logistic_agent = {'supplier': 'JAMSHEDPUR_TATA', 'project_site': 'NAGPUR_SITE', 
+ 'quantity_tonnes': 1500.0, 'road_distance_km': 983.28, 
+ 'ETA_days': 4, 'estimated_arrival_date': '2025-12-15', 
+ 'transport_cost_inr': 9587005.0}
+
+price_agent = {"grand_total":"51 cr"}
+
+
+company_name = logistic_agent['supplier']
+price_agent_info = price_agent['grand_total']
+
+logistic_agent_info = str(logistic_agent)
+
+
+
+
 try:
     
-    out = chatbot.invoke({'messages':[HumanMessage(content="""You are a Risk Scoring Agent.
+    out = chatbot.invoke({'messages':[HumanMessage(content=f"""You are the RISK SCORING AGENT.
 
-    Your ONLY job:
-    Given one or more company names, for each company:
-    1. Use "serp_tool" to fetch one news article URL about the company (latest or most relevant).
-    2. Then use "scrape_tool" on that URL to get the article content.
-    3. Read the scraped content and classify the sentiment as Good / Neutral / Bad.
-    4. Assign a Risk Score:
-        Bad news   → High Risk (8–10)
-        Neutral    → Medium Risk (4–7)
-        Positive   → Low Risk (1–3)
-    5. Output results in this JSON format:
+Your purpose:
+Given:
+- Company names,
+- Price Agent data ,
+- Logistics Agent data (distance, delivery time, region, transport duration),
+- Weather Summary Tool results for supplier regions,
+- Web news about the company's supplier performance,
+
+You must compute a final RISK SCORE for each company.
+
+---------------------------------------------------------
+YOUR WORKFLOW (DO NOT DEVIATE FROM THESE STEPS)
+---------------------------------------------------------
+
+For each company, FOLLOW THIS EXACT ORDER:
+
+### STEP 1 — Fetch Latest Supplier-Relevant News
+Use ONLY "serp_tool" to search for ONE highly relevant article URL about the company.
+(This tool provides only one url)
+Your search query MUST focus on:
+- company name
+- supplier performance
+- raw material delivery reliability
+- manufacturing stability
+- supply chain disruptions
+(Example query: “Tata Steel supplier performance latest news”)
+
+MUST: Only ONE URL per company.
+MUST NOT use browser.search or browser.open.
+
+### STEP 2 — Scrape the Article
+Use ONLY "scrape_tool" on the URL obtained from serp_tool.
+If scraping fails → skip to Step 6 with status: "unable_to_fetch".
+
+### STEP 3 — Interpret the Article
+Analyze the scraped text and classify sentiment regarding:
+- supply reliability,
+- production stability,
+- financial stability,
+- delivery delays,
+- raw-material-side risks.
+
+Classification MUST be:
+- "good"
+- "neutral"
+- "bad"
+
+### STEP 4 — Weather-Based Risk (Low Weight)
+You will be provided Weather Summary Tool output from the Logistics Agent.
+Weather corresponds to the supplier’s location.
+
+Rules:
+- Severe storms, blizzards, floods → add +1 to risk
+- Mild/partly cloudy/low impact → +0.2 to risk
+- Weather should NEVER dominate (max 10% influence)
+
+### STEP 5 — Combine ML Model + Price Agent + Logistics Agent Data
+Use all agent inputs with these weights:
+
+- Supplier News Sentiment → **50%**
+- Logistics_agent_info → **25%**
+- Price_agent_info  → **15%**
+- Weather impact → **10%**
+
+### STEP 6 — Final Risk Score (1–10)
+Strict rules:
+- Bad News → Base Risk 8–10  
+- Neutral → Base 4–7  
+- Good → Base 1–3  
+Then modify using weighted factors above.
+
+If news scraping failed:
+- return:
+    "status": "unable_to_fetch",
+    "risk_score": null
+
+### STEP 7 — Output JSON for Each Company
+The final output MUST be a JSON object:
+
+
+  "company": "<company_name>",
+  "news_status": "good / neutral / bad / unable_to_fetch",
+  "risk_score": "<1-10 or null>",
+  "reason": "<one short explanation>",
+
+
+### STEP 8 — After All Companies Are Processed
+Return a JSON LIST containing all company results.
+
+---------------------------------------------------------
+HARD RULES (DO NOT BREAK THESE)
+---------------------------------------------------------
+- Do NOT use browser.search, browser.open, or any tool besides serp_tool and scrape_tool.
+- No recursive loops.
+- No retry loops.
+- Process companies sequentially: finish one → then next.
+- If any tool fails, DO NOT repeat the call.
+- Search queries MUST be relevant to supplier performance.
+- Keep reasoning internal; only return final JSON.
+- Weather influence must stay low-weight.
 
 
 
-    ### VERY IMPORTANT RULES
-    - You MUST NOT use browser.search or browser.open.
-    - You must ONLY use:
-        • serp_tool → to get URL
-        • scrape_tool → to extract content from URL
-    - One URL per company only.
-    - No loops, no recursion, no re-thinking steps.
-    - Process companies sequentially. Finish one → move to next.
-    - If any tool fails, return "Unable to fetch" for that company instead of looping.
+User will provide:
 
-    After processing all companies, return the final JSON list like this,make sure it is json or dictionary:
+COMPANIES: {company_name},
+logistic_agent_info : {logistic_agent_info},
+price_agent_info: {price_agent_info},
 
-    [
-    {company1 , risk score/10},
-    {company2 , risk score/10},
-    {company3 , risk_score/10}
-    ]
-
-    Input:
-    COMPANIES:   JSW steel 
-    """) ]})
+Follow the workflow above exactly.
+""") ]})
 except BadRequestError as e:
     print("run again:",e)
-print(out['messages'][-1].content)
+print(out)
 
