@@ -179,3 +179,9 @@ Thumbs.db
 
 *.env
 .pkl
+penv/
+/env/
+*.venv/
+*.log
+penv/
+.venv/
