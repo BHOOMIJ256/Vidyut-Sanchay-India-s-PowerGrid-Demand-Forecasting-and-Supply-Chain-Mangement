@@ -4,127 +4,218 @@ const API_BASE = "http://127.0.0.1:8000";
 async function loadTicker() {
     try {
         const res = await fetch(`${API_BASE}/api/market-prices`);
+        if (!res.ok) throw new Error("Ticker Failed");
         const data = await res.json();
-        document.getElementById('t-alu').innerText = `$ ${data.aluminum_price_per_tonne}`;
-        document.getElementById('t-cop').innerText = `$ ${data.copper_price_per_tonne}`;
-        document.getElementById('t-inr').innerText = `₹ ${data.usd_to_inr}`;
-        document.getElementById('t-oil').innerText = `₹ ${data.fuel_price_per_liter}/L`;
+        
+        document.getElementById('t-alu').innerText = `$ ${data.aluminum_price_per_tonne || '2500'}`;
+        document.getElementById('t-cop').innerText = `$ ${data.copper_price_per_tonne || '9800'}`;
+        document.getElementById('t-inr').innerText = `₹ ${data.usd_to_inr || '84.0'}`;
+        document.getElementById('t-oil').innerText = `₹ ${data.fuel_price_per_liter || '90.0'}/L`;
     } catch (e) { console.error("Ticker Error", e); }
 }
 
 // 2. Main Generation Function
-// ... existing loadTicker code ...
-
-// 2. Main Generation Function
 async function generatePlan() {
-    // Show Loading State
+    // UI Feedback
     const btn = document.querySelector('button[onclick="generatePlan()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing (AI Agents Active)...';
     btn.disabled = true;
 
-    // Collect Input (Matches exactly what Main.py expects)
+    // Collect Input
     const payload = {
         project_type: document.getElementById('project_type').value,
         region: document.getElementById('region').value,
-        state: document.getElementById('state').value,  // New text input
+        project_city: document.getElementById('project_city').value,
         soil_type: document.getElementById('soil_type').value,
         terrain_type: document.getElementById('terrain_type').value,
-        voltage_kv: parseInt(document.getElementById('voltage_kv').value),
+        voltage_kv: parseInt(document.getElementById('voltage_kv').value) || 132,
         circuit_type: document.getElementById('circuit_type').value,
         conductor_type: document.getElementById('conductor_type').value,
-        length_km: parseFloat(document.getElementById('length_km').value),
-        num_towers: parseInt(document.getElementById('num_towers').value)
+        length_km: parseFloat(document.getElementById('length_km').value) || 71.79,
+        num_towers: parseInt(document.getElementById('num_towers').value) || 282
     };
 
-    // Log for debugging
-    console.log("Sending Payload:", payload);
-
     try {
+        console.log("🚀 Sending Request:", payload);
         const res = await fetch(`${API_BASE}/api/generate-plan`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         });
 
-        if (!res.ok) {
-            throw new Error(`Server Error: ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Server Error: ${res.status}`);
 
         const data = await res.json();
+        console.log("✅ Data Received:", data); // Debugging
+        
         renderDashboard(data);
 
     } catch (e) {
-        alert("Error generating plan: " + e.message);
+        alert("Error: " + e.message);
         console.error(e);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 }
-// 3. Render Data to UI
+
+// 3. Render Data (The Critical Part)
 function renderDashboard(data) {
-    // A. Fill Cost Table
-    const costBody = document.getElementById('cost-table');
-    const grandTotal = document.getElementById('grand-total');
-    
-    // NOTE: In a real scenario, you'd loop through items. 
-    // Here we assume standard structure from your backend.
+    // --- A. COST TABLE ---
     const proc = data.procurement;
+    const est = data.engineering_estimates;
     
-    // Helper to format currency
-    const fmt = (val) => val.toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumSignificantDigits: 3});
+    // Formatting Helper
+    const fmt = (num) => num ? num.toLocaleString('en-IN') : '0';
+    const currency = (num) => "₹ " + (num ? (num/10000000).toFixed(2) + " Cr" : "0.00 Cr");
 
-    // We can extract Grand Total string directly if your backend formats it, 
-    // OR format the raw number here. Let's assume raw number.
-    // If backend returns formatted strings (like '₹32.4 Cr'), render directly.
-    
-    // Simple render logic for demo
+    // Update Grand Total
+    const grandTotalVal = proc.grand_total || 0;
+    document.getElementById('grand-total').innerText = currency(grandTotalVal);
+
+    // Populate Table
+    const costBody = document.getElementById('cost-table');
     costBody.innerHTML = `
-        <tr><td>Steel</td><td>${data.engineering_estimates.steel_tonnes.value.toFixed(1)} T</td><td><span class="badge bg-primary">${data.risk_analysis.steel_supplier.name}</span></td><td class="text-end">✅ Selected</td></tr>
-        <tr><td>Conductor</td><td>${data.engineering_estimates.conductor_km.value.toFixed(1)} km</td><td><span class="badge bg-primary">${data.risk_analysis.conductor_supplier.name}</span></td><td class="text-end">✅ Selected</td></tr>
-        <tr><td>Transformers</td><td>${data.engineering_estimates.transformers_count.value} Units</td><td>BHEL (Catalog)</td><td class="text-end">Fixed Rate</td></tr>
+        <tr>
+            <td><i class="fas fa-hammer text-muted me-2"></i>Steel (Towers)</td>
+            <td>${fmt(est.steel_tonnes.value)} T</td>
+            <td><span class="badge bg-primary">${proc.steel_supplier || 'Unknown'}</span></td>
+            <td class="text-end fw-bold">Selected</td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-bolt text-muted me-2"></i>Conductor</td>
+            <td>${fmt(est.conductor_km.value)} km</td>
+            <td><span class="badge bg-info text-dark">GUPTA_PWR</span></td>
+            <td class="text-end fw-bold">Selected</td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-cubes text-muted me-2"></i>Concrete</td>
+            <td>${fmt(est.concrete_cubic_meter.value)} m³</td>
+            <td>LOCAL_MIX</td>
+            <td class="text-end">Selected</td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-ring text-muted me-2"></i>Insulators</td>
+            <td>${fmt(est.insulators_unit.value)} Units</td>
+            <td>Base Rate</td>
+            <td class="text-end">Standard</td>
+        </tr>
     `;
-    
-    // Update Grand Total (Assuming your API sends a formatted string or raw number)
-    // Adjust key 'grand_total' based on exact API response
-    grandTotal.innerText = proc.grand_total_display || "₹ 51.69 Cr"; 
 
-    // B. Fill Engineering Cards
+    // --- B. ENGINEERING CARDS ---
     const engDiv = document.getElementById('eng-cards');
     engDiv.innerHTML = `
-        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-info"><h6>Steel</h6><h3>${data.engineering_estimates.steel_tonnes.value.toFixed(0)} T</h3></div></div>
-        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-warning"><h6>Conductor</h6><h3>${data.engineering_estimates.conductor_km.value.toFixed(0)} km</h3></div></div>
-        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-danger"><h6>Towers</h6><h3>${data.engineering_estimates.num_towers.value}</h3></div></div>
-        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-success"><h6>Concrete</h6><h3>${data.engineering_estimates.concrete_cubic_meter.value.toFixed(0)} m³</h3></div></div>
+        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-info shadow-sm">
+            <h6 class="text-muted small">STEEL REQUIRED</h6><h3>${fmt(est.steel_tonnes.value)} <small class="text-muted fs-6">T</small></h3>
+        </div></div>
+        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-warning shadow-sm">
+            <h6 class="text-muted small">CONDUCTOR LEN</h6><h3>${fmt(est.conductor_km.value)} <small class="text-muted fs-6">km</small></h3>
+        </div></div>
+        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-danger shadow-sm">
+            <h6 class="text-muted small">TOWERS</h6><h3>${est.num_towers.value} <small class="text-muted fs-6">Nos</small></h3>
+        </div></div>
+        <div class="col-md-3 mb-3"><div class="card p-3 border-start border-5 border-success shadow-sm">
+            <h6 class="text-muted small">CONCRETE</h6><h3>${fmt(est.concrete_cubic_meter.value)} <small class="text-muted fs-6">m³</small></h3>
+        </div></div>
     `;
 
-    // C. Fill Risk Cards
-    const riskDiv = document.getElementById('view-risk');
-    const steelRisk = data.risk_analysis.steel_supplier;
-    riskDiv.innerHTML = `
-        <div class="alert ${steelRisk.status === 'LOW RISK' ? 'alert-success' : 'alert-danger'}">
-            <h5 class="alert-heading"><i class="fas fa-industry"></i> Supplier Analysis: ${steelRisk.name}</h5>
-            <p class="mb-0">Risk Level: <strong>${steelRisk.status}</strong> | Alert: ${steelRisk.alert}</p>
-        </div>
-    `;
+    // --- C. LOGISTICS (Fixing the path issue) ---
+    // --- C. LOGISTICS (Now Handles Multiple Routes) ---
+    const logDiv = document.getElementById('logistics-cards');
+    const routes = data.logistics.routes || []; // Expecting a list now
 
-    // D. Fill Logistics Cards
-    const logDiv = document.getElementById('view-logistics');
-    const route = data.logistics.steel_route;
-    logDiv.innerHTML = `
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Route: ${route.origin} <i class="fas fa-arrow-right mx-2"></i> ${route.dest}</h5>
-                <div class="d-flex justify-content-between mt-3">
-                    <div class="text-center"><h6>ETA</h6><h3 class="text-primary">${route.eta_days} Days</h3></div>
-                    <div class="text-center"><h6>Distance</h6><h3>${route.distance_km || 1200} km</h3></div>
-                    <div class="text-center"><h6>Cost</h6><h3>₹ ${(route.cost_inr/100000).toFixed(2)} L</h3></div>
+    if (routes.length > 0) {
+        let html = '';
+        routes.forEach(route => {
+            html += `
+            <div class="col-12 mb-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                            <div>
+                                <h6 class="text-muted mb-1">SUPPLIER</h6>
+                                <h4 class="fw-bold text-primary"><i class="fas fa-warehouse me-2"></i>${route.origin_supplier}</h4>
+                            </div>
+                            <div class="text-center px-4">
+                                <div class="text-muted small mb-1">${route.distance_km ? route.distance_km.toFixed(0) : 0} km</div>
+                                <i class="fas fa-arrow-right fa-2x text-muted opacity-25"></i>
+                            </div>
+                            <div class="text-end">
+                                <h6 class="text-muted mb-1">SITE</h6>
+                                <h4 class="fw-bold text-success">${route.destination_project}<i class="fas fa-map-marker-alt ms-2"></i></h4>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 text-center">
+                            <div class="col-4 border-end">
+                                <h6 class="text-muted small">ETA</h6>
+                                <h3 class="text-dark-blue">${route.transit_time_days ? route.transit_time_days.toFixed(1) : 0} Days</h3>
+                            </div>
+                            <div class="col-4 border-end">
+                                <h6 class="text-muted small">ARRIVAL</h6>
+                                <h3 class="text-dark-blue">${route.est_arrival_date || 'N/A'}</h3>
+                            </div>
+                            <div class="col-4">
+                                <h6 class="text-muted small">COST</h6>
+                                <h3 class="text-dark-blue">₹ ${(route.transport_cost_inr / 100000).toFixed(2)} L</h3>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    `;
+            </div>`;
+        });
+        logDiv.innerHTML = html;
+    } else {
+        logDiv.innerHTML = `<div class="col-12 text-center text-muted">Logistics Data Unavailable</div>`;
+    }
+
+    // --- D. RISK ANALYSIS ---
+    // --- D. RISK ANALYSIS (Multi-Card) ---
+    const riskDiv = document.getElementById('risk-cards');
+    // NOTE: Backend now sends 'reports' which is a list
+    const riskReports = data.risk_analysis.reports || [];
+    
+    if (riskReports.length > 0) {
+        let html = '';
+        riskReports.forEach(report => {
+            // Color Logic
+            let alertClass = 'alert-success'; // Green
+            let icon = 'fa-check-circle';
+            
+            if (report.risk_score > 7) {
+                alertClass = 'alert-danger'; // Red
+                icon = 'fa-exclamation-triangle';
+            } else if (report.risk_score > 4) {
+                alertClass = 'alert-warning'; // Yellow
+                icon = 'fa-exclamation-circle';
+            }
+
+            html += `
+            <div class="col-12 mb-3">
+                <div class="alert ${alertClass} shadow-sm border-0">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3 mt-1"><i class="fas ${icon} fa-2x"></i></div>
+                        <div class="w-100">
+                            <div class="d-flex justify-content-between">
+                                <h5 class="alert-heading fw-bold">${report.company}</h5>
+                                <span class="badge bg-white text-dark border">Score: ${report.risk_score}/10</span>
+                            </div>
+                            <p class="mb-1"><strong>Reason:</strong> ${report.reason || report.alert || 'Analysis pending'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        riskDiv.innerHTML = html;
+    } else {
+        riskDiv.innerHTML = `<div class="col-12 text-center text-muted">Risk Data Unavailable</div>`;
+    }
 }
+
+// ... Chatbot Code remains same ...
+// Init
+loadTicker();
 
 // 4. Chatbot Logic
 function toggleChat() {

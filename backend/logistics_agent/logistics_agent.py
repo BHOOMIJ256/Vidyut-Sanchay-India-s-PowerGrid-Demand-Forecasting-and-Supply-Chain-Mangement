@@ -11,8 +11,8 @@ import requests
 
 # NOTE: We change these imports to direct imports for standalone execution.
 # This works when running files inside the same directory.
-from config import LOCATION_DB, MASTER_SETTINGS
-from utils import (
+from .config import LOCATION_DB, MASTER_SETTINGS
+from .utils import (
     apply_road_curvature,
     calculate_cost,
     calculate_driving_time_hours,
