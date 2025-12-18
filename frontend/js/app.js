@@ -1,5 +1,8 @@
 const API_BASE = "http://127.0.0.1:8000";
 
+// --- GLOBAL VARIABLE FOR BOT MEMORY ---
+let currentDashboardData = null; 
+
 // 1. Load Live Prices on Start
 async function loadTicker() {
     try {
@@ -47,7 +50,10 @@ async function generatePlan() {
         if (!res.ok) throw new Error(`Server Error: ${res.status}`);
 
         const data = await res.json();
-        console.log("✅ Data Received:", data); // Debugging
+        console.log("✅ Data Received:", data); 
+        
+        // --- CRITICAL FIX: Save data for the Chatbot ---
+        currentDashboardData = data; 
         
         renderDashboard(data);
 
@@ -218,34 +224,189 @@ function renderDashboard(data) {
 loadTicker();
 
 // 4. Chatbot Logic
+// ================= CHATBOT LOGIC =================
+
+// 1. Toggle Window Visibility
 function toggleChat() {
-    document.getElementById('chatWindow').classList.toggle('d-none');
-}
-
-async function sendMessage() {
-    const input = document.getElementById('chat-input');
-    const msg = input.value;
-    if(!msg) return;
-
-    // Add User Msg
-    const chatBody = document.getElementById('chat-messages');
-    chatBody.innerHTML += `<div class="message user-msg">${msg}</div>`;
-    input.value = '';
-
-    // Call API
-    try {
-        const res = await fetch(`${API_BASE}/api/chat`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: msg})
-        });
-        const data = await res.json();
-        chatBody.innerHTML += `<div class="message bot-msg">${data.response}</div>`;
-        chatBody.scrollTop = chatBody.scrollHeight; // Auto scroll
-    } catch(e) {
-        chatBody.innerHTML += `<div class="message bot-msg text-danger">Error: Could not reach AI.</div>`;
+    const chatWindow = document.getElementById('chat-window');
+    const chatBtn = document.getElementById('chat-launcher');
+    
+    // Toggle the 'd-none' (Bootstrap Display None) class
+    if (chatWindow.classList.contains('d-none')) {
+        chatWindow.classList.remove('d-none');
+        chatBtn.style.transform = 'scale(0)'; // Hide button
+        setTimeout(() => document.getElementById('chat-input').focus(), 100);
+    } else {
+        chatWindow.classList.add('d-none');
+        chatBtn.style.transform = 'scale(1)'; // Show button
     }
 }
 
-// Init
-loadTicker();
+// 2. Handle Enter Key
+function handleEnter(event) {
+    if (event.key === 'Enter') sendMessage();
+}
+
+// 3. Send Message to Backend
+async function sendMessage() {
+    const inputField = document.getElementById('chat-input');
+    const msg = inputField.value.trim();
+    if (!msg) return;
+
+    // A. Show User Message
+    addChatMessage(msg, 'user');
+    inputField.value = '';
+    
+    // B. Show "Thinking..." (With a FIXED ID)
+    // We remove any existing loader first, just in case
+    removeLoader(); 
+    addChatMessage("Thinking...", 'bot', true); // This will now create ID="bot-loading-indicator"
+
+    // C. Prepare Context
+    const context = (typeof currentDashboardData !== 'undefined') ? currentDashboardData : null;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/chat`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                message: msg,
+                context: context 
+            })
+        });
+
+        const data = await res.json();
+        
+        // D. Remove Loader & Show Response
+        removeLoader();
+        addChatMessage(data.response, 'bot');
+
+    } catch (e) {
+        removeLoader();
+        addChatMessage("⚠️ Error: Agent offline.", 'bot');
+        console.error(e);
+    }
+}
+
+// Helper to remove loader reliably
+function removeLoader() {
+    const loader = document.getElementById('bot-loading-indicator');
+    if (loader) loader.remove();
+}
+
+// 4. Helper to Append Messages (Updated)
+function addChatMessage(text, sender, isTyping = false) {
+    const chatBody = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    
+    if (isTyping) {
+        // FIXED ID for the loader so we can always find it
+        div.id = 'bot-loading-indicator';
+        div.className = 'message-bot text-muted fst-italic';
+        div.innerHTML = `<i class="fas fa-circle-notch fa-spin text-primary me-2"></i> Thinking...`;
+    } else {
+        // Unique ID for normal messages
+        div.id = 'msg-' + Date.now();
+        
+        if (sender === 'user') {
+            div.className = 'message-user';
+            div.innerText = text;
+        } else {
+            div.className = 'message-bot';
+            div.innerHTML = formatBotResponse(text);
+        }
+    }
+    
+    chatBody.appendChild(div);
+    chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll
+    return div.id;
+}
+
+// 5. Simple Markdown Formatter for Bot (Bold, Lists)
+function formatBotResponse(text) {
+    let clean = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+        .replace(/\n/g, '<br>'); // Newlines
+    return clean;
+}
+
+// ================= REPORT GENERATOR =================
+
+function downloadReport() {
+    // 1. Check if data exists
+    if (!currentDashboardData) {
+        alert("⚠️ No plan generated yet. Please click 'Generate Plan' first.");
+        return;
+    }
+
+    const data = currentDashboardData;
+    const est = data.engineering_estimates;
+    const proc = data.procurement;
+    const routes = data.logistics.routes || [];
+    const risks = data.risk_analysis.reports || [];
+
+    // 2. Build the Text Report
+    let report = `==========================================================
+⚡ VIDYUT SANCHAY - PROCUREMENT ANALYSIS REPORT
+==========================================================
+Date Generated: ${new Date().toLocaleString()}
+Project City:   ${document.getElementById('project_city').value}
+Project Type:   ${document.getElementById('project_type').value}
+----------------------------------------------------------
+
+1. FINANCIAL SUMMARY
+--------------------
+GRAND TOTAL:    ₹ ${(proc.grand_total / 10000000).toFixed(2)} Cr
+Steel Cost:     ₹ ${(proc.steel_cost / 10000000).toFixed(2)} Cr
+Supplier:       ${proc.steel_supplier}
+
+2. ENGINEERING SPECS
+--------------------
+Steel Required: ${est.steel_tonnes.value.toLocaleString()} Tonnes
+Conductor Len:  ${est.conductor_km.value.toLocaleString()} km
+Towers Count:   ${est.num_towers.value} units
+Concrete Vol:   ${est.concrete_cubic_meter.value.toLocaleString()} m3
+
+3. LOGISTICS PLAN
+-----------------
+`;
+
+    // Loop through routes
+    routes.forEach((r, index) => {
+        report += `
+   [Route ${index + 1}] ${r.origin_supplier} -> ${r.destination_project}
+   - Distance:    ${r.distance_km} km
+   - ETA:         ${r.transit_time_days.toFixed(1)} Days
+   - Est Arrival: ${r.est_arrival_date}
+   - Cost:        ₹ ${(r.transport_cost_inr / 100000).toFixed(2)} Lakhs
+`;
+    });
+
+    report += `
+4. RISK ANALYSIS
+----------------
+`;
+
+    // Loop through risks
+    risks.forEach((r) => {
+        report += `
+   [${r.company}] Score: ${r.risk_score}/10
+   - Verdict: ${r.reason || 'No specific alert.'}
+`;
+    });
+
+    report += `
+==========================================================
+Generated by Vidyut Sanchay AI Orchestrator
+==========================================================
+`;
+
+    // 3. Trigger Download
+    const blob = new Blob([report], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Vidyut_Report_${Date.now()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

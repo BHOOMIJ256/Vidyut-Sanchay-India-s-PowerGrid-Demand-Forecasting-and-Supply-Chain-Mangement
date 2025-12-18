@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+requests
+python-dotenv
+beautifulsoup4
+duckduckgo-search
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langgraph
+pydantic
+langchain-google-genai

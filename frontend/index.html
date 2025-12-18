@@ -10,15 +10,26 @@
 </head>
 <body class="bg-light">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-blue shadow-sm">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm sticky-top" style="z-index: 1000;">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#">
-                <i class="fas fa-bolt text-warning me-2"></i> VIDYUT SANCHAY
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <span class="fw-bold fs-4" style="color: #0d6efd; letter-spacing: 1px;">VIDYUT SANCHAY</span>
             </a>
-            <span class="text-light small opacity-75">AI-Powered Supply Chain Orchestrator</span>
+            
+            <div class="d-flex align-items-center gap-2">
+                <button onclick="downloadReport()" class="btn btn-outline-primary rounded-pill btn-sm fw-bold border-2">
+                    <i class="fas fa-file-download me-2"></i>Download Report
+                </button>
+                
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill d-none d-md-inline-block">
+                    <i class="fas fa-satellite-dish me-2"></i>Intelligent Grid Orchestrator
+                </span>
+            </div>
         </div>
     </nav>
-
     <div class="bg-white border-bottom py-2">
         <div class="container-fluid">
             <div class="d-flex justify-content-between align-items-center small text-muted" id="ticker-container">
@@ -211,27 +222,57 @@
         </div>
     </div>
 
-    <button class="btn btn-primary rounded-circle shadow-lg chat-btn" onclick="toggleChat()">
-        <i class="fas fa-robot fa-lg"></i>
-    </button>
+ <button onclick="toggleChat()" id="chat-launcher" 
+        class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center" 
+        style="position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px; z-index: 2000; border: 4px solid white; transition: transform 0.3s ease;">
+    <i class="fas fa-robot fa-2x"></i>
+    <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+        <span class="visually-hidden">New alerts</span>
+    </span>
+</button>
 
-    <div class="card shadow-lg chat-window d-none" id="chatWindow">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-robot me-2"></i> AI Manager</span>
-            <button class="btn btn-sm btn-link text-white" onclick="toggleChat()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="card-body chat-body" id="chat-messages">
-            <div class="message bot-msg">Hello! I am connected to the Price & Risk agents. Ask me anything about the plan.</div>
-        </div>
-        <div class="card-footer bg-white">
-            <div class="input-group">
-                <input type="text" id="chat-input" class="form-control border-0" placeholder="Type a message...">
-                <button class="btn btn-primary" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+<div id="chat-window" class="card shadow-lg border-0 d-none" 
+     style="position: fixed; bottom: 110px; right: 30px; width: 380px; height: 550px; z-index: 2000; border-radius: 15px; display: flex; flex-direction: column;">
+    
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3" 
+         style="border-top-left-radius: 15px; border-top-right-radius: 15px;">
+        <div class="d-flex align-items-center">
+            <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div>
+                <h6 class="mb-0 fw-bold">Vidyut Assistant</h6>
+                <small class="opacity-75" style="font-size: 0.75rem;">● Online | AI Orchestrator</small>
             </div>
         </div>
+        <button onclick="toggleChat()" class="btn btn-sm text-white opacity-50 hover-opacity-100"><i class="fas fa-times fa-lg"></i></button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+   <div class="card-body bg-light overflow-auto" id="chat-messages">
+    
+    <div class="message-bot">
+        <strong>👋 Hello!</strong><br>
+        I am Vidyut Sanchay. I have access to your project plan, live rates, and logistics. Ask me anything!
+    </div>
+
+</div>
+
+    <div class="card-footer bg-white p-3 border-top">
+        <div class="input-group bg-light rounded-pill border px-2">
+            <input type="text" id="chat-input" class="form-control border-0 bg-transparent shadow-none" 
+                   placeholder="Type a question..." onkeypress="handleEnter(event)" style="font-size: 0.9rem;">
+            <button class="btn btn-link text-primary text-decoration-none" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="text-center mt-2">
+            <small class="text-muted" style="font-size: 0.65rem;">Powered by Vidyut Brain & Llama-3</small>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="js/app.js"></script>
+
 </body>
 </html>

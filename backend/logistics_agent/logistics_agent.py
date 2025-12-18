@@ -1,217 +1,142 @@
-# logistics_agent.py
-from __future__ import annotations
-
-import json # Added for clean output
-from datetime import datetime, timedelta
-from typing import Dict, Tuple
+import os
 import requests
+import pandas as pd
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-# Imports for data and math
-# logistics_agent.py (Line 9 onwards)
-
-# NOTE: We change these imports to direct imports for standalone execution.
-# This works when running files inside the same directory.
-from .config import LOCATION_DB, MASTER_SETTINGS
-from .utils import (
-    apply_road_curvature,
-    calculate_cost,
-    calculate_driving_time_hours,
-    calculate_haversine_distance,
-    calculate_rest_hours,
-)
+# Load environment variables
+load_dotenv()
 
 class LogisticsAgent:
-    """
-    The Logistics Agent: A deterministic calculator for a single bulk shipment.
-    It provides Distance, Time, and Cost based on fixed parameters.
-    """
-
-    def __init__(self, settings: Dict[str, float] | None = None) -> None:
-        self.location_db: Dict[str, Tuple[float, float]] = LOCATION_DB
-        # Use MASTER_SETTINGS as the default instead of LOGISTICS_SETTINGS
-        self.settings: Dict[str, float] = settings or MASTER_SETTINGS
-
-    def get_coordinates(self, key: str) -> Tuple[float, float]:
-        """Return coordinates for a known key, raising an error if not found."""
-        try:
-            return self.location_db[key]
-        except KeyError as exc:
-            # Crucial for Risk Agent integration: gives a clean error message
-            raise ValueError(f"Location Key '{key}' not found in the LOCATION_DB.") from exc
-
-    def calculate_route_metrics(self, origin_key: str, destination_key: str) -> Dict[str, float]:
-        """
-        Calculate road distance and duration using the Geoapify Routing API.
+    def __init__(self):
+        # 1. Try fetching from Environment
+        env_key = os.getenv("GEOAPIFY_API_KEY")
         
-        Geoapify returns:
-        - Distance (in meters)
-        - Duration (in seconds, which is the raw driving time)
-        """
-      
-        """
-        Calculate road distance and duration using the Geoapify Routing API.
-        Uses the standard query parameter structure (?waypoints=...) confirmed by documentation.
-        """
-        
-        origin_coord = self.get_coordinates(origin_key)
-        destination_coord = self.get_coordinates(destination_key)
+        # 2. If Env fails, use the backup key (Hackathon Fix)
+        # This ensures the agent NEVER thinks it's offline if the key exists.
+        if env_key:
+            self.api_key = env_key
+        else:
+            # Using the key you provided in config.py
+            self.api_key = "e752819c238c4864a4be5df774a62240"
+            print("   [Logistics] Using Hardcoded Backup Key")
 
-        # Geoapify requires coordinates in the format: lat,lon (Latitude first)
-        # The structure is: lat1,lon1|lat2,lon2
-        start_location = f"{origin_coord[0]},{origin_coord[1]}" # lat,lon
-        end_location = f"{destination_coord[0]},{destination_coord[1]}" # lat,lon
-        
-        waypoints_string = f"{start_location}|{end_location}"
-
-        # --- Build the Query Parameters ---
-        params = {
-            # Use the correct waypoints format confirmed by API docs
-            "waypoints": waypoints_string,
-            
-            # The mode should be 'truck' for heavy haulage (not 'drive')
-            "mode": self.settings["TRANSPORT_MODE"], # Should be 'truck' from config
-            
-            "apiKey": self.settings["GEOAPIFY_KEY"],
-            
-            # Optional: Add details if needed, but remove to test basic functionality first
-            # "details": "route_details", 
+        # Simple offline database for fallbacks
+        self.location_db = {
+            "SKIPPER_KOLKATA": {"lat": 22.5726, "lon": 88.3639},
+            "TATA_JAMSHEDPUR": {"lat": 22.8046, "lon": 86.2029},
+            "SAIL_BHILAI": {"lat": 21.1938, "lon": 81.3509},
+            "JSW_MUMBAI": {"lat": 19.0760, "lon": 72.8777},
+            "MUMBAI_SITE": {"lat": 19.0760, "lon": 72.8777},
+            "NAGPUR_SITE": {"lat": 21.1458, "lon": 79.0882},
         }
 
-        # --- CRITICAL: Use the base URL for the endpoint ---
-        base_url = self.settings["GEOAPIFY_ROUTING_URL"] # e.g., https://api.geoapify.com/v1/routing
+    def calculate_delivery(self, supplier_name, project_site_key, quantity_tonnes):
+        """
+        Calculates delivery metrics.
+        """
+        # 1. Try Online API First (Most Accurate)
+        if self.api_key:
+            try:
+                # Clean inputs: "Kolkata, India" is good, "SKIPPER_KOLKATA" needs cleaning
+                origin_query = supplier_name.replace("_", " ") if "India" not in supplier_name else supplier_name
+                dest_query = project_site_key.replace("_", " ") if "India" not in project_site_key else project_site_key
+                
+                return self._get_route_from_api(origin_query, dest_query, quantity_tonnes)
+            except Exception as e:
+                print(f"   [Logistics] API Call Failed: {e}")
+                # Don't crash, just print error and try DB
 
-        # --- Execute API Call ---
-        try:
-            # requests.get handles building the full query string (?waypoints=...&mode=...)
-            response = requests.get(base_url, params=params) 
-            response.raise_for_status() # This will catch the 400 error if it persists
+        # 2. Offline Fallback
+        return self._get_route_from_db(supplier_name, project_site_key, quantity_tonnes)
 
-            data = response.json()
+    def _get_route_from_api(self, origin, destination, qty):
+        # A. Geocode Origin
+        origin_coords = self._geocode(origin)
+        if not origin_coords: raise ValueError(f"Could not geocode Origin: {origin}")
+        
+        # B. Geocode Destination
+        dest_coords = self._geocode(destination)
+        if not dest_coords: raise ValueError(f"Could not geocode Destination: {destination}")
+        
+        # C. Calculate Route (Routing API)
+        url = f"https://api.geoapify.com/v1/routing?waypoints={origin_coords['lat']},{origin_coords['lon']}|{dest_coords['lat']},{dest_coords['lon']}&mode=truck&apiKey={self.api_key}"
+        
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            raise Exception(f"Routing API Error ({resp.status_code}): {resp.text}")
             
-            # Check for valid route data
-            if not data.get('features'):
-                raise ValueError("Geoapify: Route could not be calculated (e.g., no road access).")
+        data = resp.json()
+        if 'features' not in data or not data['features']:
+             raise Exception("No route found by API")
 
-            # Data extraction logic (based on GeoJSON feature structure)
-            properties = data['features'][0]['properties']
-            
-            # Time and distance are reported per leg or summarized for the route
-            # Check for the key names based on typical Geoapify response:
-            distance_km = properties['distance'] / 1000  # Distance is in meters, convert to km
-            duration_seconds = properties['time']
-            
-            # Convert seconds to driving hours
-            driving_hours = duration_seconds / 3600
-
-            return {
-                "distance_km": float(distance_km),
-                "driving_hours": float(driving_hours),
-            }
-
-        except requests.exceptions.HTTPError as e:
-            # Print the URL for final debugging if it fails again
-            print(f"DEBUG URL: {response.url}")
-            raise IOError(f"API HTTP Error: {e} - Response: {response.text}")
-        except Exception as e:
-            raise ValueError(f"Route Parsing Error: {e}")
-
-    def calculate_eta(self, driving_hours: float) -> Dict[str, float | str]:
-        """Compute final ETA (days) and estimated arrival date."""
+        route_props = data['features'][0]['properties']
         
-        rest_hours = calculate_rest_hours(
-            driving_hours,
-            self.settings["driver_shift_hours"],
-            self.settings["driver_rest_hours"],
-        )
+        dist_km = route_props['distance'] / 1000.0
+        time_hours = route_props['time'] / 3600.0
         
-        # Total time = Driving + Rest + Fixed Buffer (Loading/Unloading)
-        total_hours = driving_hours + rest_hours + self.settings["loading_buffer_hours"]
+        # Commercial Adjustments 
+        transit_days = (time_hours / 12.0) + 1.0  
         
-        transit_time_days = float(total_hours / 24)
+        # Cost Logic (₹6.5 per Ton per Km)
+        rate_per_ton_km = 6.5
+        cost = dist_km * qty * rate_per_ton_km
         
-        # Calculate arrival date based on today
-        arrival_date = datetime.now().date() + timedelta(days=transit_time_days)
+        arrival_date = datetime.now() + timedelta(days=transit_days)
         
         return {
-            "transit_time_days": transit_time_days,
+            "origin_supplier": origin,
+            "destination_project": destination,
+            "quantity_tonnes": qty,
+            "distance_km": round(dist_km, 2),
+            "transit_time_days": round(transit_days, 1),
             "est_arrival_date": arrival_date.strftime("%Y-%m-%d"),
+            "transport_cost_inr": round(cost, 2),
+            "source": "Live API"
         }
 
-    def generate_report(
-        self, supplier_key: str, project_site_key: str, quantity_tonnes: float
-    ) -> Dict[str, object]:
-        """Generate a full delivery report for a single material."""
+    def _geocode(self, location_name):
+        url = "https://api.geoapify.com/v1/geocode/search"
+        params = {"text": location_name, "apiKey": self.api_key, "limit": 1}
         
-        # 1. Route Metrics
-        route_metrics = self.calculate_route_metrics(supplier_key, project_site_key)
-        distance_km = route_metrics["distance_km"]
-        driving_hours = route_metrics["driving_hours"]
-        
-        # 2. Time
-        eta = self.calculate_eta(driving_hours)
-        
-        # 3. Cost
-        rate = self.settings["cost_per_tonne_per_km"]
-        total_cost = calculate_cost(distance_km, quantity_tonnes, rate)
+        try:
+            resp = requests.get(url, params=params)
+            if resp.status_code == 200 and resp.json()['features']:
+                props = resp.json()['features'][0]['properties']
+                return {"lat": props['lat'], "lon": props['lon']}
+        except Exception:
+            return None
+        return None
 
+    def _get_route_from_db(self, origin, dest, qty):
+        # Check if keys exist
+        if origin not in self.location_db:
+            # If we are here, API failed AND DB failed.
+            raise ValueError(f"Location Key '{origin}' not found in LOCATION_DB and API failed.")
+            
+        if dest not in self.location_db:
+             # Try to find a generic site key if specific one fails
+            if "SITE" in dest and "MUMBAI" in dest: dest = "MUMBAI_SITE"
+            elif "SITE" in dest and "NAGPUR" in dest: dest = "NAGPUR_SITE"
+            else: raise ValueError(f"Location Key '{dest}' not found in LOCATION_DB.")
+
+        # Calculate "As the crow flies" distance
+        lat1, lon1 = self.location_db[origin]['lat'], self.location_db[origin]['lon']
+        lat2, lon2 = self.location_db[dest]['lat'], self.location_db[dest]['lon']
+        
+        # Approx: 1 degree lat = 111km
+        dist_km = ((lat2 - lat1)**2 + (lon2 - lon1)**2)**0.5 * 100.0
+        
+        transit_days = (dist_km / 400.0) + 2 
+        cost = dist_km * qty * 6.0 
+        
         return {
-            "origin_supplier": supplier_key,
-            "destination_project": project_site_key,
-            "quantity_tonnes": float(quantity_tonnes),
-            "distance_km": float(distance_km),
-            "transit_time_days": float(eta["transit_time_days"]),
-            "est_arrival_date": eta["est_arrival_date"],
-            "transport_cost_inr": float(total_cost),
-            "rate_used_inr_t_km": rate,
+            "origin_supplier": origin,
+            "destination_project": dest,
+            "quantity_tonnes": qty,
+            "distance_km": round(dist_km, 2),
+            "transit_time_days": round(transit_days, 1),
+            "est_arrival_date": (datetime.now() + timedelta(days=transit_days)).strftime("%Y-%m-%d"),
+            "transport_cost_inr": round(cost, 2),
+            "source": "Offline DB"
         }
-
-    def calculate_delivery(
-        self, supplier_name: str, project_site_key: str, quantity_tonnes: float
-    ) -> Dict[str, object]:
-        """
-        Public API (The function the Risk Agent will call)
-        Computes the transport plan for one bulk material.
-        """
-        return self.generate_report(supplier_name, project_site_key, quantity_tonnes)
-
-
-# --------------------------------------------------------------------------
-# --- ENTRY POINT FOR TESTING AND DEMONSTRATION (Run this file directly) ---
-# --------------------------------------------------------------------------
-if __name__ == "__main__":
-    agent = LogisticsAgent()
-
-    print("--- Running Logistics Agent Test Scenario (Simulating Risk Agent Loop) ---")
-    
-    # 1. Set fixed project destination
-    project_site = "MUMBAI_SITE"
-    
-    # --- Test 1: Steel from Tata (5000 tonnes) ---
-    try:
-        steel_tonnes = 5000.0
-        # The Risk Agent's first call: 
-        steel_report = agent.calculate_delivery(
-            supplier_name="TATA_JAMSHEDPUR", 
-            project_site_key=project_site, 
-            quantity_tonnes=steel_tonnes
-        )
-        print("\n✅ Report 1: STEEL from TATA (Candidate 1):")
-        print(json.dumps(steel_report, indent=4))
-        
-        # --- Test 2: Cement from SAIL (300 tonnes) ---
-        cement_tonnes = 300.0
-        # The Risk Agent's second call: 
-        cement_report = agent.calculate_delivery(
-            supplier_name="SAIL_BHILAI", 
-            project_site_key=project_site, 
-            quantity_tonnes=cement_tonnes
-        )
-        print("\n✅ Report 2: CEMENT from SAIL (Candidate 2):")
-        print(json.dumps(cement_report, indent=4))
-
-        # --- Aggregation Done by the Risk Agent ---
-        total_transport_cost = steel_report['transport_cost_inr'] + cement_report['transport_cost_inr']
-        print(f"\n--- RISK AGENT'S AGGREGATED TOTAL PROJECT TRANSPORT COST: ₹{total_transport_cost:,.0f} ---")
-
-    except Exception as e:
-        print(f"\n❌ FATAL ERROR DURING TEST EXECUTION. Check location_data.csv: {e}")

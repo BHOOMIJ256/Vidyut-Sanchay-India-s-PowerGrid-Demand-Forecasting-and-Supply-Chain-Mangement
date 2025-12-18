@@ -1,28 +1,66 @@
-/* Custom CSS */
+/* ================= GLOBAL STYLES ================= */
 :root {
-    --dark-blue: #0f172a;
-    --primary-blue: #2563eb;
+    --primary-blue: #0d6efd;
+    --bg-chat: #f0f2f5;
 }
 
-.bg-dark-blue { background-color: var(--dark-blue); }
-.text-dark-blue { color: var(--dark-blue); }
+/* ================= CHATBOT STYLES ================= */
 
-.card { border-radius: 12px; }
-.nav-pills .nav-link { color: #64748b; font-weight: 500; }
-.nav-pills .nav-link.active { background-color: var(--primary-blue); color: white; }
-
-.ticker-item { margin-left: 20px; border-left: 1px solid #e2e8f0; padding-left: 20px; }
-
-/* Chatbot Styles */
-.chat-btn {
-    position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 1000;
+/* 1. The Launcher Button */
+#chat-launcher {
+    transition: transform 0.3s ease;
 }
-.chat-window {
-    position: fixed; bottom: 100px; right: 30px; width: 350px; height: 450px; 
-    z-index: 1000; border-radius: 15px; display: flex; flex-direction: column;
+#chat-launcher:hover {
+    transform: scale(1.1);
+    box-shadow: 0 10px 25px rgba(13, 110, 253, 0.4) !important;
 }
-.chat-body { flex: 1; overflow-y: auto; background: #f8fafc; padding: 15px; }
 
-.message { padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; max-width: 80%; }
-.bot-msg { background: #e2e8f0; align-self: flex-start; margin-right: auto; }
-.user-msg { background: var(--primary-blue); color: white; align-self: flex-end; margin-left: auto; }
+/* 2. The Container (THE FIX) */
+/* We use !important to force the Flexbox layout */
+#chat-messages {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px;
+    padding: 20px;
+    background-color: var(--bg-chat);
+}
+
+/* 3. BOT Message (White Bubble -> Left) */
+.message-bot {
+    align-self: flex-start !important; /* Force Left */
+    background-color: #ffffff !important;
+    color: #333;
+    padding: 12px 16px;
+    border-radius: 18px 18px 18px 0;
+    max-width: 85%;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 4. USER Message (Blue Bubble -> Right) */
+.message-user {
+    align-self: flex-end !important;   /* Force Right */
+    background-color: #0d6efd !important;
+    color: white !important;
+    padding: 12px 16px;
+    border-radius: 18px 18px 0 18px;
+    max-width: 85%;
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 5. Loading Spinner */
+#bot-loading-indicator {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #6c757d;
+    font-style: italic;
+    padding: 5px 10px;
+}
+
