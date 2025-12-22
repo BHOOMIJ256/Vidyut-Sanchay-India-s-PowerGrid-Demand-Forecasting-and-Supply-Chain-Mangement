@@ -169,12 +169,17 @@ docker run -p 8000:8000 --env-file .env `
 * *"Is the route from Kolkata to Mumbai affected by weather?"*
 
 
-
-
 3. **Download Report:**
 * Click the **"Download Report"** button in the navbar to get a comprehensive `.txt` summary of costs, risks, and logistics.
 
 
+## 🎥 Project Demo
+
+Check out the full workflow of Vidyut Sanchay in action:
+
+[![Watch the Demo](https://img.youtube.com/vi/DUy4Vn-jQZQ/maxresdefault.jpg)](https://youtu.be/DUy4Vn-jQZQ)
+  
+> *Click the image above to watch the video.*
 
 ---
 
