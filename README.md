@@ -1,4 +1,4 @@
-# ⚡ Vidyut Sanchay
+# Vidyut Sanchay
 
 ### **Intelligent AI Orchestrator for Power Grid Procurement & Logistics**
 
@@ -6,18 +6,18 @@
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
-* **🧠 Vidyut Brain (AI Orchestrator):** A context-aware chatbot powered by **Llama-3 (via Groq)** and **LangGraph**. It acts as a "God Mode" assistant, answering questions about project plans, live rates, and logistics feasibility in real-time.
-* **📊 Smart Procurement Plans:** Uses an **ExtraTreeRegressor ML Model** to predict material quantities (Steel, Conductors, Concrete) based on project terrain, voltage, and soil type.
-* **🚚 Logistics Optimization:** Calculates optimal transport routes, estimated time of arrival (ETA), and costs using **Geoapify**.
-* **🌍 Live Market Intelligence:** Integrates with **Alpha Vantage** and **ExchangeRate-API** to fetch real-time commodity prices and Forex rates.
-* **🛡️ Automated Risk Analysis:** Evaluates geopolitical, financial, and supply chain risks using **Google Gemini** and **SerpApi** for real-time web search.
-* **📑 Instant Reporting:** Generates downloadable, invoice-style text reports summarizing the entire project analysis.
+* **Vidyut Brain (AI Orchestrator):** A context-aware chatbot powered by **Llama-3 (via Groq)** and **LangGraph**. It acts as a "God Mode" assistant, answering questions about project plans, live rates, and logistics feasibility in real-time.
+* **Smart Procurement Plans:** Uses an **ExtraTreeRegressor ML Model** to predict material quantities (Steel, Conductors, Concrete) based on project terrain, voltage, and soil type.
+* **Logistics Optimization:** Calculates optimal transport routes, estimated time of arrival (ETA), and costs using **Geoapify**.
+* **Live Market Intelligence:** Integrates with **Alpha Vantage** and **ExchangeRate-API** to fetch real-time commodity prices and Forex rates.
+* **Automated Risk Analysis:** Evaluates geopolitical, financial, and supply chain risks using **Google Gemini** and **SerpApi** for real-time web search.
+* **Instant Reporting:** Generates downloadable, invoice-style text reports summarizing the entire project analysis.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### **Backend (The Brain)**
 
@@ -47,7 +47,7 @@
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```bash
 vidyut_sanchay/
@@ -71,7 +71,7 @@ vidyut_sanchay/
 
 ---
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### **Prerequisites**
 
@@ -126,7 +126,7 @@ uvicorn main:app --reload
 
 ---
 
-## 🐳 Docker Setup (Recommended)
+## Docker Setup (Recommended)
 
 Since the ML model is large and we want to persist API caches, use **Volume Mounting**.
 
@@ -154,7 +154,7 @@ docker run -p 8000:8000 --env-file .env `
 
 ---
 
-## 📖 Usage Guide
+## Usage Guide
 
 1. **Generate Plan:**
 * Enter project details (City, Terrain, Voltage, Length).
@@ -173,7 +173,7 @@ docker run -p 8000:8000 --env-file .env `
 * Click the **"Download Report"** button in the navbar to get a comprehensive `.txt` summary of costs, risks, and logistics.
 
 
-## 🎥 Project Demo
+## Project Demo
 
 Check out the full workflow of Vidyut Sanchay in action:
 
@@ -183,7 +183,7 @@ Check out the full workflow of Vidyut Sanchay in action:
 
 ---
 
-## 🚧 Troubleshooting
+## Troubleshooting
 
 * **API Rate Limit Errors:** Alpha Vantage and ExchangeRate-API have free tier limits. The app caches data in `price_cache.json` to avoid this. If you see errors, wait 5 minutes and restart.
 * **Docker "File Not Found":** Ensure you use **absolute paths** (e.g., `C:/Users/...`) in the `-v` volume mount command.
@@ -191,7 +191,7 @@ Check out the full workflow of Vidyut Sanchay in action:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome!
 
@@ -203,7 +203,7 @@ Contributions are welcome!
 
 ---
 
-## 📜 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
